@@ -116,37 +116,72 @@ p { line-height: 1.6; text-align: justify; font-size: 15px; }
 .sopa-grid-mini { display: grid; grid-template-columns: repeat(8, 1fr); font-family: 'Courier New'; font-size: 10px; gap: 2px; max-width: 150px; margin: 0 auto; opacity: 0.6; }
 
 
+/* --- INICIO CÓDIGO SOPA DE LETRAS FUNCIONAL --- */
+
+/* Contenedor de la sopa en el Popup */
 .sopa-grid-popup {
     display: grid;
-    grid-template-columns: repeat(8, 1fr); 
-    gap: 5px;
-    margin: 0 auto;
-    max-width: 350px; 
-    background-color: rgba(255, 255, 255, 0.7); 
-    padding: 15px;
-    border: 2px solid var(--ink-color);
-    box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+    /* El número de columnas se define en el JS, pero esto es el fallback */
+    grid-template-columns: repeat(10, 1fr); 
+    gap: 4px;
+    margin: 15px auto;
+    max-width: 100%;
+    user-select: none; /* Evita que se seleccione el texto como en Word */
 }
 
-.sopa-grid-popup span {
-    font-family: 'Courier New', monospace; 
-    font-size: 20px;
-    font-weight: bold;
-    text-transform: uppercase;
-    aspect-ratio: 1 / 1; 
+/* Cada celda (letra) individual */
+.sopa-cell {
+    aspect-ratio: 1 / 1;
     display: flex;
     justify-content: center;
     align-items: center;
     background: #fff;
     border: 1px solid #ccc;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
     color: var(--ink-color);
-    user-select: none; 
 }
 
-.sopa-grid-popup span:hover {
-    background-color: var(--paper-color);
-    cursor: crosshair;
+/* Efecto Hover (cuando pasas el mouse por encima) */
+.sopa-cell:hover {
+    background-color: #f0e6d2;
+    transform: scale(1.05);
 }
+
+/* ESTADO: Seleccionado (Cuando haces clic) */
+.sopa-cell.selected {
+    background-color: #333;
+    color: #fff;
+    transform: scale(0.95);
+    border-color: #000;
+}
+
+/* ESTADO: Encontrado (Palabra completada) */
+.sopa-cell.found {
+    background-color: var(--love-red) !important;
+    color: white !important;
+    border-color: var(--love-red);
+    animation: success-pop 0.4s ease-out;
+    pointer-events: none; /* Ya no se puede des-seleccionar */
+}
+
+@keyframes success-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Ajuste para pantallas pequeñas (móviles) */
+@media (max-width: 480px) {
+    .sopa-cell {
+        font-size: 12px;
+    }
+}
+/* --- FIN CÓDIGO SOPA DE LETRAS --- */
 
 
 .las-estrellas, .clima { background: rgba(210, 180, 140, 0.15); padding: 15px; margin-bottom: 20px; border: 1px solid rgba(0,0,0,0.1); }
