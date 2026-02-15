@@ -8,26 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
- <!-- 
-
-Contáctame:
-
-    * Invitame un café
- https://buymeacoffee.com/alexx.dev
-
-    * Portafolio Web
- https://alexxdev.vercel.app
-
-    * Sigueme en tiktok
- https://www.tiktok.com/@alexx.dev?is_from_webapp=1&sender_device=pc 
  
-    *Canal de WhatsApp
- https://whatsapp.com/channel/0029VazQEXq90x2vIdNkrH1p
-
- 
- WhatsApp: +52 1 55 6628 1018
-
--->
  
 <body>
 
@@ -145,61 +126,248 @@ Contáctame:
 </div>
 
 <script>
+    // --- CONFIGURACIÓN PRINCIPAL ---
+    // Configuración del juego
+    const configSopa = {
+        palabras: ["AMOR", "BESOS", "VIDA", "TUYO", "ETERNO"], // Puedes cambiar estas palabras
+        size: 10, // Tamaño de la cuadrícula 10x10
+    };
+    
+    let estadoJuego = {
+        grid: [],       // Guardará las letras
+        solucion: {},   // Guardará dónde está cada palabra
+        seleccionadas: new Set(), // Qué celdas ha tocado el usuario
+        encontradas: new Set()    // Qué palabras ya encontró
+    };
+
+    // --- FUNCIONES DEL SISTEMA ---
+
     function abrirPeriodico() {
         document.getElementById('pantalla-carta').style.display = 'none';
         document.getElementById('periodico-contenido').style.display = 'block';
+        
+        // Intentar reproducir video y música
         const v = document.getElementById('miVideo');
-        v.muted = false; 
-        v.play();
-    }
-
-    const palabrasOcultas = ["AMOR", "VIDA", "TUYO", "SIEMPRE"];
-    const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const tamaño = 8;
-
-    function generarContenidoSopa() {
-        let html = '';
-        for (let i = 0; i < tamaño * tamaño; i++) {
-            html += `<span>${letras.charAt(Math.floor(Math.random() * letras.length))}</span>`;
+        if(v) { 
+            v.muted = false; 
+            v.play().catch(e => console.log("Interacción requerida para audio")); 
         }
-        return html;
+        
+        // Generar la sopa en segundo plano para tenerla lista
+        iniciarJuegoLogico();
     }
 
-    document.getElementById('mini-sopa').innerHTML = generarContenidoSopa();
+    // --- LÓGICA DE LA SOPA DE LETRAS ---
+
+    function iniciarJuegoLogico() {
+        const { size, palabras } = configSopa;
+        const totalCeldas = size * size;
+        const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        
+        // 1. Crear grid vacío
+        estadoJuego.grid = new Array(totalCeldas).fill('');
+        estadoJuego.solucion = {};
+        
+        // 2. Colocar palabras
+        for (let palabra of palabras) {
+            let colocada = false;
+            let intentos = 0;
+            
+            while (!colocada && intentos < 100) {
+                intentos++;
+                // Posición y dirección aleatoria
+                const esHorizontal = Math.random() > 0.5;
+                const fila = Math.floor(Math.random() * size);
+                const col = Math.floor(Math.random() * size);
+                
+                // Verificar si cabe y no choca
+                let indicesTentativos = [];
+                let posible = true;
+                
+                for (let i = 0; i < palabra.length; i++) {
+                    let fActual = fila + (esHorizontal ? 0 : i);
+                    let cActual = col + (esHorizontal ? i : 0);
+                    let idx = fActual * size + cActual;
+                    
+                    // Límites del tablero
+                    if (fActual >= size || cActual >= size) {
+                        posible = false; break;
+                    }
+                    // Choque con otra letra diferente
+                    if (estadoJuego.grid[idx] !== '' && estadoJuego.grid[idx] !== palabra[i]) {
+                        posible = false; break;
+                    }
+                    indicesTentativos.push(idx);
+                }
+                
+                if (posible) {
+                    indicesTentativos.forEach((idx, i) => {
+                        estadoJuego.grid[idx] = palabra[i];
+                    });
+                    estadoJuego.solucion[palabra] = indicesTentativos;
+                    colocada = true;
+                }
+            }
+        }
+        
+        // 3. Rellenar huecos con letras aleatorias
+        for (let i = 0; i < totalCeldas; i++) {
+            if (estadoJuego.grid[i] === '') {
+                estadoJuego.grid[i] = letras.charAt(Math.floor(Math.random() * letras.length));
+            }
+        }
+
+        // 4. Dibujar la mini versión en la página principal
+        dibujarMiniSopa();
+    }
+
+    function dibujarMiniSopa() {
+        const miniContainer = document.getElementById('mini-sopa');
+        if (!miniContainer) return;
+        
+        // Mostramos solo una vista previa de 8x8 para que encaje bonito
+        let html = '';
+        for(let i=0; i<64; i++) {
+            html += `<span>${estadoJuego.grid[i] || '?'}</span>`;
+        }
+        miniContainer.innerHTML = html;
+    }
+
+    // --- INTERACTIVIDAD CON SWEETALERT ---
 
     function jugarSopa() {
+        // Reiniciar estado de selección
+        estadoJuego.seleccionadas.clear();
+        estadoJuego.encontradas.clear();
+        
+        // Construir HTML del Grid
+        const { size } = configSopa;
+        let gridHtml = `<div class="sopa-grid-popup" style="grid-template-columns: repeat(${size}, 1fr);">`;
+        
+        estadoJuego.grid.forEach((letra, index) => {
+            gridHtml += `<div class="sopa-cell" data-index="${index}">${letra}</div>`;
+        });
+        gridHtml += `</div>`;
+
         Swal.fire({
-            title: 'Sopa de Letras',
-            html: `<p style="margin-bottom:15px;">Encuentra las palabras: <br><b>${palabrasOcultas.join(", ")}</b></p>
-                   <div class="sopa-grid-popup">${generarContenidoSopa()}</div>
-                   <p style="font-size: 0.8em; margin-top: 15px; font-style: italic;">¡Tómale captura cuando las encuentres!</p>`,
-            confirmButtonText: '¡Lo logré!',
-            confirmButtonColor: '#8b0000',
+            title: '❤️ BUSCA LAS PALABRAS ❤️',
+            html: `
+                <p style="margin-bottom: 10px;">Encuentra: <b>${configSopa.palabras.join(", ")}</b></p>
+                ${gridHtml}
+                <p style="font-size: 0.85em; margin-top: 15px; color: #555;"><i>Toca las letras para marcar.</i></p>
+            `,
+            confirmButtonText: 'Cerrar',
+            confirmButtonColor: '#555',
             background: '#fdf6e3 url(https://www.transparenttextures.com/patterns/parchment.png)',
-            customClass: {
-                popup: 'swal-sopa-container' 
+            width: 450,
+            padding: '1em',
+            // ESTA ES LA CLAVE: didOpen se ejecuta cuando el HTML ya existe
+            didOpen: (popup) => {
+                const celdas = popup.querySelectorAll('.sopa-cell');
+                celdas.forEach(celda => {
+                    celda.addEventListener('click', (e) => {
+                        manejarClickCelda(parseInt(e.target.dataset.index));
+                    });
+                });
             }
         });
     }
+
+    function manejarClickCelda(index) {
+        // Toggle selección
+        const celdaDiv = document.querySelector(`.sopa-cell[data-index="${index}"]`);
+        
+        if (estadoJuego.seleccionadas.has(index)) {
+            estadoJuego.seleccionadas.delete(index);
+            celdaDiv.classList.remove('selected');
+        } else {
+            estadoJuego.seleccionadas.add(index);
+            celdaDiv.classList.add('selected');
+        }
+        
+        verificarVictoria();
+    }
+
+    function verificarVictoria() {
+        let huboCambio = false;
+
+        // Revisar cada palabra oculta
+        for (const [palabra, indices] of Object.entries(estadoJuego.solucion)) {
+            if (estadoJuego.encontradas.has(palabra)) continue;
+
+            // Verificar si todos los índices de esta palabra están seleccionados
+            const estaCompleta = indices.every(idx => estadoJuego.seleccionadas.has(idx));
+            
+            if (estaCompleta) {
+                // ¡Palabra encontrada!
+                estadoJuego.encontradas.add(palabra);
+                huboCambio = true;
+                
+                // Marcar visualmente y quitar de "seleccionadas" para bloquearlas
+                indices.forEach(idx => {
+                    const celda = document.querySelector(`.sopa-cell[data-index="${idx}"]`);
+                    celda.classList.remove('selected');
+                    celda.classList.add('found');
+                    estadoJuego.seleccionadas.delete(idx); // Ya no es seleccionable, es encontrada
+                });
+            }
+        }
+
+        // Si encontró todas
+        if (huboCambio && estadoJuego.encontradas.size === configSopa.palabras.length) {
+            setTimeout(() => {
+                Swal.fire({
+                    title: '¡ERES INCREÍBLE!',
+                    text: 'Encontraste todas las palabras. Eres la mejor detective del amor. ❤️',
+                    icon: 'success',
+                    confirmButtonColor: '#8b0000',
+                    confirmButtonText: '¡Te amo!'
+                });
+            }, 500);
+        }
+    }
+
+    // --- OTRAS FUNCIONES (Alertas y Botones) ---
 
     function mostrarAlerta() {
         Swal.fire({
             title: '¡URGENTE!',
             text: "¿Aceptas seguir escribiendo esta historia conmigo?",
-            icon: 'heart',
+            icon: 'warning',
             iconColor: '#8b0000',
             showCancelButton: true,
-            confirmButtonText: '¡Sí, mil veces sí!',
-            cancelButtonText: '¡Obvio!',
+            confirmButtonText: '¡Sí, acepto!',
+            cancelButtonText: 'Mmm... déjame pensarlo',
+            confirmButtonColor: '#8b0000',
             background: '#fdf6e3 url(https://www.transparenttextures.com/patterns/parchment.png)',
-            backdrop: `rgba(139, 0, 0, 0.3)`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: '¡SABÍA QUE DIRÍAS QUE SÍ!',
+                    text: 'Prepárate para ser la mujer más feliz del mundo.',
+                    icon: 'success',
+                    confirmButtonColor: '#8b0000'
+                });
+            }
         });
     }
 
     function respuestaAmor(tipo) {
-        let msg = tipo === 'mucho' ? '¡Yo te amo mucho más!' : tipo === 'infinito' ? '¡Nuestro amor es eterno!' : '¡Y mañana será aún mejor!';
-        Swal.fire({ title: '❤️', text: msg, confirmButtonColor: '#8b0000', background: '#fdf6e3 url(https://www.transparenttextures.com/patterns/parchment.png)' });
+        const mensajes = {
+            'mucho': '¡Yo te amo de aquí a la luna (ida y vuelta)! 🚀❤️',
+            'infinito': '¡Nuestro amor no cabe en este universo! ✨♾️',
+            'mas': '¡Imposible! Mi amor crece exponencialmente cada segundo. 📈❤️'
+        };
+        Swal.fire({ 
+            title: '❤️', 
+            text: mensajes[tipo], 
+            confirmButtonColor: '#8b0000', 
+            background: '#fdf6e3 url(https://www.transparenttextures.com/patterns/parchment.png)' 
+        });
     }
+    
+    // Iniciar generación al cargar la página
+    document.addEventListener('DOMContentLoaded', iniciarJuegoLogico);
 </script>
 </body>
 
